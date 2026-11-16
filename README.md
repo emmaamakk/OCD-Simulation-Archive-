@@ -1,0 +1,1 @@
+This is a simulation project about OCD compulsive checking. A computational model was implemented to show how uncertainty affects the decision to compulsively check and the time it takes to respond/act.
