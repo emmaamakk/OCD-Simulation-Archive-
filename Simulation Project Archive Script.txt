@@ -1,0 +1,156 @@
+﻿Simulation Project Archive Script
+ 
+# OCD Compulsive Stove-Checking Simulation
+# 30 Trials with Response Time as the Output
+ 
+# Install required packages (only needed once)
+if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    install.packages("ggplot2")
+}
+ 
+if (!requireNamespace("gifski", quietly = TRUE)) {
+    install.packages("gifski")
+}
+ 
+library(ggplot2)
+ 
+# Set up the simulation
+set.seed(42)
+ 
+trials <- 30
+uncertainty <- 0.55
+previous_check <- 0
+ 
+# Create a data frame to store results
+results <- data.frame(
+        Trial = integer(),
+        Uncertainty = numeric(),
+        Urge = numeric(),
+        Checking = integer(),
+        Response_Time = numeric(),
+        Feedback = character()
+)
+ 
+# Run the simulation
+for (trial in 1:trials) {
+        
+        # Calculate urge to check
+        urge <- 0.65 * uncertainty +
+            0.35 * previous_check
+        
+        # Calculate probability of checking
+        probability <- 1 / (1 + exp(-8 * (urge - 0.5)))
+        
+        # Decide whether to check
+        checked <- rbinom(1, 1, probability)
+        
+        # Calculate response time
+        response_time <- max(
+            0.30,
+            0.80 + 1.80 * uncertainty +
+                rnorm(1, 0, 0.12)
+        )
+        
+        # Calculate feedback
+        if (checked == 1) {
+            
+            feedback <- "Temporary relief"
+        next_uncertainty <- max(
+                0.15, uncertainty - 0.15
+            )
+            
+        } else {
+            
+            feedback <- "Uncertainty remains"
+        next_uncertainty <- min(
+                0.95, uncertainty + 0.08
+            )
+        }
+        
+        # Save the results
+        results <- rbind(
+            results,
+            data.frame(
+                Trial = trial,
+            Uncertainty = uncertainty,
+                Urge = urge,
+                Checking = checked,
+            Response_Time = response_time,
+                Feedback = feedback
+            )
+        )
+        
+        # Update the next trial
+        previous_check <- checked
+        uncertainty <- next_uncertainty
+}
+ 
+# View simulation results
+print(results)
+ 
+# ---------------------------------
+# CREATE THE ANIMATED GRAPH
+# ---------------------------------
+ 
+# Create a folder for animation frames
+dir.create("ocd_frames", showWarnings = FALSE)
+ 
+# Create 30 frames
+for (i in 1:trials) {
+        
+        graph <- ggplot(
+            results[1:i, ],
+            aes(x = Trial, y = Response_Time)
+        ) +
+            
+        geom_line(linewidth = 1, color = "steelblue") +
+            
+        geom_point(size = 3, color = "steelblue") +
+            
+            labs(
+                title = paste(
+                "OCD Stove-Checking Simulation",
+                "- Trial", i, "of", trials
+                ),
+                x = "Trial",
+                y = "Response Time (seconds)"
+            ) +
+            
+        scale_x_continuous(
+                limits = c(1, trials),
+                breaks = seq(0, trials, by = 5)
+            ) +
+            
+        theme_minimal(base_size = 14)
+        
+        # Save each frame
+        ggsave(
+            filename = paste0(
+            "ocd_frames/frame_",
+            sprintf("%02d", i),
+            ".png"
+            ), plot = graph,
+            width = 9,
+            height = 5,
+            dpi = 100)
+}
+ 
+# ---------------------------------
+# COMBINE FRAMES INTO AN ANIMATION
+# ---------------------------------
+ 
+frames <- list.files("ocd_frames", pattern = "*.png$", full.names = TRUE)
+ 
+gifski::gifski(png_files = frames,gif_file = "OCD_Stove_Checking_Animation.gif", delay = 0.3, loop = TRUE)
+ 
+# Save the simulation data
+write.csv(results, "OCD_Stove_Checking_Results.csv",row.names = FALSE)
+ 
+# Display final graph
+print(graph)
+ 
+# Display summary
+cat("Simulation completed!\n")
+cat("Total trials:", trials, "\n")
+cat("Average response time:", round(mean(results$Response_Time), 2), "seconds\n")
+cat("Number of checking decisions:", sum(results$Checking), "out of", trials, "\n")
